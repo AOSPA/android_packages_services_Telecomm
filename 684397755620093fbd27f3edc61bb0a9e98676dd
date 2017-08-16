@@ -1,0 +1,10 @@
+Code-Review+2: Alex Naidis <alex.naidis@linux.com>
+Presubmit-Ready+1: Alex Naidis <alex.naidis@linux.com>
+Verified+1: Friendly BuildBot
+Verified+1: Alex Naidis <alex.naidis@linux.com>
+Code-Review+2: Evan Anderson <evananderson@aospa.co>
+Submitted-by: Alex Naidis <alex.naidis@linux.com>
+Submitted-at: Wed, 16 Aug 2017 02:00:55 +0000
+Reviewed-on: https://gerrit.aospa.co/3763
+Project: AOSPA/android_packages_services_Telecomm
+Branch: refs/heads/nougat-mr2
