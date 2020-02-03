@@ -47,6 +47,7 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 // QTI_BEGIN: 2020-04-08: Telephony: Add vibrating for outgoing call accepted support
 // QTI_END: 2020-04-08: Telephony: Add vibrating for outgoing call accepted support
+import android.provider.Settings;
 import android.telecom.Log;
 import android.telecom.TelecomManager;
 import android.util.Pair;
@@ -149,6 +150,11 @@ public class Ringer {
     private static final int OUTGOING_CALL_VIBRATING_DURATION = 100;
 
 // QTI_END: 2020-04-08: Telephony: Add vibrating for outgoing call accepted support
+
+    // These keys and values are @hide in the framework and not exposed to the module API surface,
+    // so they are defined locally to avoid referencing the hidden Settings/UserHandle constants.
+    private static final String RINGTONE_VIBRATION_PATTERN = "ringtone_vibration_pattern";
+
     static {
         // construct complete pulse pattern
         PULSE_PATTERN = new long[PULSE_PRIMING_PATTERN.length + PULSE_RAMPING_PATTERN.length];
@@ -166,15 +172,19 @@ public class Ringer {
     }
 
     private static final long[] SIMPLE_VIBRATION_PATTERN = {
-            0, // No delay before starting
-            1000, // How long to vibrate
-            1000, // How long to wait before vibrating again
+        0, // No delay before starting
+        1000, // How long to vibrate
+        1000, // How long to wait before vibrating again
+        1000, // How long to vibrate
+        1000, // How long to wait before vibrating again
     };
 
-    private static final int[] SIMPLE_VIBRATION_AMPLITUDE = {
-            0, // No delay before starting
-            255, // Vibrate full amplitude
-            0, // No amplitude while waiting
+    private static final long[] DZZZ_DA_VIBRATION_PATTERN = {
+        0, // No delay before starting
+        500, // How long to vibrate
+        200, // Delay
+        70, // How long to vibrate
+        720, // How long to wait before vibrating again
     };
 
     private static final long[] CALL_CONNECTED_VIBRATION_PATTERN = {
@@ -186,6 +196,56 @@ public class Ringer {
             0, // No delay before starting
             255, // Vibrate full amplitude
     };
+
+    private static final long[] MM_MM_MM_VIBRATION_PATTERN = {
+        0, // No delay before starting
+        300, // How long to vibrate
+        400, // Delay
+        300, // How long to vibrate
+        400, // Delay
+        300, // How long to vibrate
+        1400, // How long to wait before vibrating again
+    };
+
+    private static final long[] DA_DA_DZZZ_VIBRATION_PATTERN = {
+        0, // No delay before starting
+        70, // How long to vibrate
+        80, // Delay
+        70, // How long to vibrate
+        180, // Delay
+        600,  // How long to vibrate
+        1050, // How long to wait before vibrating again
+    };
+
+    private static final long[] DA_DZZZ_DA_VIBRATION_PATTERN = {
+        0, // No delay before starting
+        80, // How long to vibrate
+        200, // Delay
+        600, // How long to vibrate
+        150, // Delay
+        60,  // How long to vibrate
+        1050, // How long to wait before vibrating again
+    };
+
+    private static final int[] SEVEN_ELEMENTS_VIBRATION_AMPLITUDE = {
+        0, // No delay before starting
+        255, // Vibrate full amplitude
+        0, // No amplitude while waiting
+        255,
+        0,
+        255,
+        0,
+    };
+
+    private static final int[] FIVE_ELEMENTS_VIBRATION_AMPLITUDE = {
+        0, // No delay before starting
+        255, // Vibrate full amplitude
+        0, // No amplitude while waiting
+        255,
+        0,
+    };
+
+    private boolean mUseSimplePattern;
 
     /**
      * Indicates that vibration should be repeated at element 5 in the {@link #PULSE_AMPLITUDE} and
@@ -312,9 +372,7 @@ public class Ringer {
         mAudioManager = mContext.getSystemService(AudioManager.class);
         mAccessibilityManagerAdapter = accessibilityManagerAdapter;
         mAnomalyReporter = anomalyReporter;
-
-        mDefaultVibrationEffect =
-                loadDefaultRingVibrationEffect(mContext, mVibrationEffectProxy, featureFlags);
+        mUseSimplePattern = TelecomResourceId.getBoolean(mContext, "use_simple_vibration_pattern");
 
         mIsHapticPlaybackSupportedByDevice =
                 mSystemSettingsUtil.isHapticPlaybackSupported(mContext);
@@ -521,6 +579,9 @@ public class Ringer {
                     && isVibratorEnabled) {
                 Log.i(this, "Muted haptic channels since audio coupled ramping ringer is disabled");
                 hapticChannelsMuted = true;
+            } else if (mUseSimplePattern) {
+                Log.i(this, "Muted haptic channels to force explicit simple vibration pattern");
+                hapticChannelsMuted = true;
             } else if (hapticChannelsMuted) {
                 Log.i(this,
                         "Muted haptic channels isVibratorEnabled=%s, hapticPlaybackSupported=%s",
@@ -570,6 +631,7 @@ public class Ringer {
                         // vibrator wasn't reserved. This still triggers the mBlockOnRingingFuture.
                         return;
                     }
+                    updateVibrationPattern();
                     final VibrationEffect vibrationEffect = mDefaultVibrationEffect;
 
                     boolean isUsingAudioCoupledHaptics =
@@ -1002,32 +1064,36 @@ public class Ringer {
         }
     }
 
-    private static VibrationEffect loadDefaultRingVibrationEffect(
-            Context context,
-            VibrationEffectProxy vibrationEffectProxy,
-            FeatureFlags featureFlags) {
-        Resources resources = TelecomResourceId.getResources(context);
-
-        if (TelecomResourceId.getBoolean(context, "use_simple_vibration_pattern")) {
-            Log.i(TAG, "Using simple default ring vibration.");
-            return createSimpleRingVibration(vibrationEffectProxy);
+    private void updateVibrationPattern() {
+        final int pattern = Settings.System.getInt(
+                mContext.getContentResolver(), RINGTONE_VIBRATION_PATTERN, 0);
+        if (mUseSimplePattern) {
+            switch (pattern) {
+                case 1:
+                    mDefaultVibrationEffect = mVibrationEffectProxy.createWaveform(DZZZ_DA_VIBRATION_PATTERN,
+                        FIVE_ELEMENTS_VIBRATION_AMPLITUDE, REPEAT_SIMPLE_VIBRATION_AT);
+                    break;
+                case 2:
+                    mDefaultVibrationEffect = mVibrationEffectProxy.createWaveform(MM_MM_MM_VIBRATION_PATTERN,
+                        SEVEN_ELEMENTS_VIBRATION_AMPLITUDE, REPEAT_SIMPLE_VIBRATION_AT);
+                    break;
+                case 3:
+                    mDefaultVibrationEffect = mVibrationEffectProxy.createWaveform(DA_DA_DZZZ_VIBRATION_PATTERN,
+                        SEVEN_ELEMENTS_VIBRATION_AMPLITUDE, REPEAT_SIMPLE_VIBRATION_AT);
+                    break;
+                case 4:
+                    mDefaultVibrationEffect = mVibrationEffectProxy.createWaveform(DA_DZZZ_DA_VIBRATION_PATTERN,
+                        SEVEN_ELEMENTS_VIBRATION_AMPLITUDE, REPEAT_SIMPLE_VIBRATION_AT);
+                    break;
+                default:
+                    mDefaultVibrationEffect = mVibrationEffectProxy.createWaveform(SIMPLE_VIBRATION_PATTERN,
+                        FIVE_ELEMENTS_VIBRATION_AMPLITUDE, REPEAT_SIMPLE_VIBRATION_AT);
+                    break;
+            }
+        } else {
+            mDefaultVibrationEffect = mVibrationEffectProxy.createWaveform(PULSE_PATTERN,
+                    PULSE_AMPLITUDE, REPEAT_VIBRATION_AT);
         }
-
-        if (featureFlags.useDeviceProvidedSerializedRingerVibration()) {
-            Log.i(TAG, "Device provided serialized ringer vibration is no longer supported; "
-                    + "falling back to simple default ring vibration.");
-            return createSimpleRingVibration(vibrationEffectProxy);
-        }
-
-        Log.i(TAG, "Using pulse default ring vibration.");
-        return vibrationEffectProxy.createWaveform(
-                PULSE_PATTERN, PULSE_AMPLITUDE, REPEAT_VIBRATION_AT);
-    }
-
-    private static VibrationEffect createSimpleRingVibration(
-            VibrationEffectProxy vibrationEffectProxy) {
-        return vibrationEffectProxy.createWaveform(SIMPLE_VIBRATION_PATTERN,
-                SIMPLE_VIBRATION_AMPLITUDE, REPEAT_SIMPLE_VIBRATION_AT);
     }
 
     public void startVibratingForOutgoingCallActive() {
