@@ -121,9 +121,11 @@ public class Ringer {
     }
 
     private static final long[] SIMPLE_VIBRATION_PATTERN = {
-            0, // No delay before starting
-            1000, // How long to vibrate
-            1000, // How long to wait before vibrating again
+        0, // No delay before starting
+        1000, // How long to vibrate
+        1000, // How long to wait before vibrating again
+        1000, // How long to vibrate
+        1000, // How long to wait before vibrating again
     };
 
     private static final long[] DZZZ_DA_VIBRATION_PATTERN = {
@@ -180,12 +182,6 @@ public class Ringer {
         0, // No amplitude while waiting
         255,
         0,
-    };
-
-    private static final int[] SIMPLE_VIBRATION_AMPLITUDE = {
-        0, // No delay before starting
-        255, // Vibrate full amplitude
-        0, // No amplitude while waiting
     };
 
     private boolean mUseSimplePattern;
@@ -974,7 +970,7 @@ public class Ringer {
                     break;
                 default:
                     mDefaultVibrationEffect = mVibrationEffectProxy.createWaveform(SIMPLE_VIBRATION_PATTERN,
-                        SIMPLE_VIBRATION_AMPLITUDE, REPEAT_SIMPLE_VIBRATION_AT);
+                        FIVE_ELEMENTS_VIBRATION_AMPLITUDE, REPEAT_SIMPLE_VIBRATION_AT);
                     break;
             }
         } else {
