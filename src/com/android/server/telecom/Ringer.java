@@ -28,8 +28,6 @@ import android.app.Person;
 import android.content.Context;
 import android.content.res.Resources;
 import android.media.AudioAttributes;
-import android.content.res.Resources;
-import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
@@ -105,6 +103,10 @@ public class Ringer {
     private static final boolean DEBUG_RINGER = false;
 
     public static class VibrationEffectProxy {
+        public VibrationEffect createOneShot(long milliseconds, int amplitude) {
+            return VibrationEffect.createOneShot(milliseconds, amplitude);
+        }
+
         public VibrationEffect createWaveform(long[] timings, int[] amplitudes, int repeat) {
             return VibrationEffect.createWaveform(timings, amplitudes, repeat);
         }
@@ -185,16 +187,6 @@ public class Ringer {
         200, // Delay
         70, // How long to vibrate
         720, // How long to wait before vibrating again
-    };
-
-    private static final long[] CALL_CONNECTED_VIBRATION_PATTERN = {
-            0, // No delay before starting
-            1000, // How long to vibrate
-    };
-
-    private static final int[] CALL_CONNECTED_VIBRATION_AMPLITUDE = {
-            0, // No delay before starting
-            255, // Vibrate full amplitude
     };
 
     private static final long[] MM_MM_MM_VIBRATION_PATTERN = {
@@ -1105,18 +1097,12 @@ public class Ringer {
             mIsVibrating = true;
             mAsyncTaskExecutor.execute(() -> {
                 final VibrationEffect vibrationEffect =
-                        mVibrationEffectProxy.createWaveform(CALL_CONNECTED_VIBRATION_PATTERN,
-                        CALL_CONNECTED_VIBRATION_AMPLITUDE, -1);
+                        mVibrationEffectProxy.createOneShot(
+                            OUTGOING_CALL_VIBRATING_DURATION, 255);
                 final VibrationAttributes vibrationAttributes = new VibrationAttributes.Builder()
                         .setUsage(VibrationAttributes.USAGE_NOTIFICATION)
                         .build();
                 mVibrator.vibrate(vibrationEffect, vibrationAttributes);
-                try {
-                    Thread.sleep(OUTGOING_CALL_VIBRATING_DURATION);
-                } catch (InterruptedException e) {
-                    // Womp
-                }
-                mVibrator.cancel();
                 mIsVibrating = false;
             });
         }
