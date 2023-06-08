@@ -65,6 +65,10 @@ import java.util.concurrent.TimeoutException;
 @VisibleForTesting
 public class Ringer {
     public static class VibrationEffectProxy {
+        public VibrationEffect createOneShot(long milliseconds, int amplitude) {
+            return VibrationEffect.createOneShot(milliseconds, amplitude);
+        }
+
         public VibrationEffect createWaveform(long[] timings, int[] amplitudes, int repeat) {
             return VibrationEffect.createWaveform(timings, amplitudes, repeat);
         }
@@ -841,15 +845,13 @@ public class Ringer {
             mIsVibrating = true;
             java.util.concurrent.Executors.defaultThreadFactory().newThread(() -> {
                 final VibrationEffect vibrationEffect =
-                        mVibrationEffectProxy.createWaveform(SIMPLE_VIBRATION_PATTERN,
-                        FIVE_ELEMENTS_VIBRATION_AMPLITUDE, REPEAT_SIMPLE_VIBRATION_AT);
+                        mVibrationEffectProxy.createOneShot(
+                            OUTGOING_CALL_VIBRATING_DURATION, 255);
                 final AudioAttributes vibrationAttributes = new AudioAttributes.Builder()
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
                         .build();
                 mVibrator.vibrate(vibrationEffect, vibrationAttributes);
-                android.os.SystemClock.sleep(OUTGOING_CALL_VIBRATING_DURATION);
-                mVibrator.cancel();
                 mIsVibrating = false;
             }).start();
         }
