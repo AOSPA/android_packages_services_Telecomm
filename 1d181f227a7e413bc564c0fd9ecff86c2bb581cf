@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "da41a0f7_e78edc71",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000579
+      },
+      "writtenOn": "2023-06-13T08:51:06Z",
+      "side": 1,
+      "message": "Fixes long buzz on nothing phone, need a non richtap device to verify it doesnt break anything",
+      "revId": "1d181f227a7e413bc564c0fd9ecff86c2bb581cf",
+      "serverId": "3162e3d8-d894-470e-abd9-724f7b0effad"
+    }
+  ]
+}
