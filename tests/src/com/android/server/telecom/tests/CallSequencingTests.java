@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
@@ -144,6 +145,9 @@ public class CallSequencingTests extends TelecomTestCase {
     @Override
     @After
     public void tearDown() throws Exception {
+        if (mController != null && mController.getHandler() != null) {
+            mController.getHandler().removeCallbacksAndMessages(null);
+        }
         TelecomResourceId.setTelecomContext(null);
         super.tearDown();
     }
@@ -642,6 +646,62 @@ public class CallSequencingTests extends TelecomTestCase {
 
     @Test
     @SmallTest
+    public void testMakeRoomForOutgoingCall_MaxOutgoingCalls_SelectPhoneAccount() {
+        setupMakeRoomForOutgoingCallMocks();
+
+        // Setup: New call is in SELECT_PHONE_ACCOUNT state.
+        when(mNewCall.getState()).thenReturn(CallState.SELECT_PHONE_ACCOUNT);
+        when(mNewCall.getCreationTimeMillis()).thenReturn(1000L);
+        when(mNewCall.getHandle()).thenReturn(Uri.parse("tel:1234"));
+
+        // Setup: We have another dialing call.
+        Call dialingCall = mock(Call.class);
+        when(dialingCall.getState()).thenReturn(CallState.DIALING);
+        when(dialingCall.getCreationTimeMillis()).thenReturn(500L); // different creation time
+        when(dialingCall.getHandle()).thenReturn(Uri.parse("tel:5678")); // different handle
+        when(dialingCall.getId()).thenReturn("TC@8");
+
+        // Setup: CallsManager configuration.
+        when(mCallsManager.hasMaximumOutgoingCalls(mNewCall)).thenReturn(true);
+        when(mCallsManager.getFirstCallWithStateExcept(mNewCall, CallsManager.OUTGOING_CALL_STATES))
+                .thenReturn(dialingCall);
+
+        // Mock Context and Executor.
+        when(mContext.getMainExecutor()).thenReturn(command -> command.run());
+        when(mContext.getPackageName()).thenReturn("com.android.server.telecom");
+        TelecomResourceId.setTelecomContext(mContext);
+
+        // Mock Resources for dialog.
+        when(mResources.getText(anyInt())).thenReturn("Dummy Error Message");
+
+        // Run the test
+        CompletableFuture<Boolean> future = mController.makeRoomForOutgoingCall(false, mNewCall);
+
+        // Verify:
+        // 1. Future returns false.
+        try {
+            assertFalse(future.get(SEQUENCING_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        } catch (Exception e) {
+            fail("Exception occurred: " + e);
+        }
+        // 2. setStartFailCause was called on mNewCall.
+        verify(mNewCall).setStartFailCause(eq(CallFailureCause.MAX_OUTGOING_CALLS));
+        // 3. Error dialog activity was started via context.
+        ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, timeout(SEQUENCING_TIMEOUT_MS)).startActivityAsUser(
+                intentCaptor.capture(), any(UserHandle.class));
+        Intent intent = intentCaptor.getValue();
+        assertNotNull(intent);
+        assertEquals("Dummy Error Message", intent.getCharSequenceExtra(
+                UiConstants.ERROR_MESSAGE_STRING_EXTRA));
+    }
+
+
+
+
+
+    @Test
+    @SmallTest
     public void testMakeRoomForOutgoingCallFail_CannotHold() {
         setupMakeRoomForOutgoingCallMocks();
         when(mCallsManager.canHold(mActiveCall)).thenReturn(false);
@@ -686,7 +746,8 @@ public class CallSequencingTests extends TelecomTestCase {
         assertFalse(waitForFutureResult(future, true));
 
         ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext).startActivityAsUser(intentCaptor.capture(), eq(UserHandle.CURRENT));
+        verify(mContext, timeout(SEQUENCING_TIMEOUT_MS)).startActivityAsUser(
+                intentCaptor.capture(), eq(UserHandle.CURRENT));
         Intent intent = intentCaptor.getValue();
         assertEquals(UiConstants.COMPONENT_ERROR_DIALOG,
                 intent.getComponent().getClassName());

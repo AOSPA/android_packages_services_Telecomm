@@ -509,6 +509,13 @@ public class CallsManagerTest extends TelecomTestCase {
     @Override
     @After
     public void tearDown() throws Exception {
+        if (mCallsManager != null && mCallsManager.getCallSequencingAdapter() != null) {
+            CallSequencingController controller = mCallsManager
+                    .getCallSequencingAdapter().getSequencingController();
+            if (controller != null && controller.getHandler() != null) {
+                controller.getHandler().removeCallbacksAndMessages(null);
+            }
+        }
         TelecomResourceId.setTelecomContext(null);
         mComponentContextFixture.removeConnectionService(
                 SIM_1_ACCOUNT.getAccountHandle().getComponentName(), mIConnectionService);

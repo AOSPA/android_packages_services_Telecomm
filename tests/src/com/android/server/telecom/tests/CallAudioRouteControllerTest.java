@@ -41,6 +41,7 @@ import static com.android.server.telecom.CallAudioRouteAdapter.STREAMING_FORCE_D
 import static com.android.server.telecom.CallAudioRouteAdapter.STREAMING_FORCE_ENABLED;
 import static com.android.server.telecom.CallAudioRouteAdapter.SWITCH_BASELINE_ROUTE;
 import static com.android.server.telecom.CallAudioRouteAdapter.SWITCH_BLUETOOTH;
+import static com.android.server.telecom.CallAudioRouteAdapter.SWITCH_EARPIECE;
 import static com.android.server.telecom.CallAudioRouteAdapter.SWITCH_FOCUS;
 import static com.android.server.telecom.CallAudioRouteAdapter.TOGGLE_MUTE;
 import static com.android.server.telecom.CallAudioRouteAdapter.UPDATE_SYSTEM_AUDIO_ROUTE;
@@ -149,6 +150,8 @@ import java.util.concurrent.TimeUnit;
 
 @RunWith(Parameterized.class)
 public class CallAudioRouteControllerTest extends TelecomTestCase {
+    @Rule
+    public final SetFlagsRule mSetFlagsRule = new SetFlagsRule();
     private static final String BT_ADDRESS_1 = "00:00:00:00:00:01";
     private static final BluetoothDevice BLUETOOTH_DEVICE_1 =
             makeBluetoothDevice("00:00:00:00:00:01");
@@ -158,8 +161,6 @@ public class CallAudioRouteControllerTest extends TelecomTestCase {
     private static final Set<BluetoothDevice> BLUETOOTH_DEVICES = new HashSet<>();
     private static final int TEST_TIMEOUT = 1000;
 
-    @Rule
-    public final SetFlagsRule mSetFlagsRule = new SetFlagsRule();
     @Mock
     WiredHeadsetManager mWiredHeadsetManager;
     @Mock
@@ -2876,6 +2877,8 @@ public class CallAudioRouteControllerTest extends TelecomTestCase {
     @SmallTest
     @Test
     public void testVideoCallDoesNotRouteToSpeakerIfAlreadyProcessedActiveFocus() {
+        ExtendedMockito.when(com.android.internal.telecom.flags.Flags
+                .vtActiveFocusAudioRoute()).thenReturn(false);
         mController.initialize();
         mController.onCallAdded(mCall);
         when(mCall.isActiveFocus()).thenReturn(true);
@@ -2896,6 +2899,35 @@ public class CallAudioRouteControllerTest extends TelecomTestCase {
         mController.sendMessageWithSessionInfo(SWITCH_FOCUS, ACTIVE_FOCUS, 0);
         waitForHandlerAction(mController.getAdapterHandler(), TEST_TIMEOUT);
         assertEquals(AudioRoute.TYPE_EARPIECE, mController.getCurrentOrPendingRoute().getType());
+    }
+
+    @SmallTest
+    @Test
+    public void testVideoCallDoesRouteToSpeakerIfAlreadyProcessedActiveFocus() {
+        ExtendedMockito.when(com.android.internal.telecom.flags.Flags
+                .vtActiveFocusAudioRoute()).thenReturn(true);
+        mController.initialize();
+        mController.onCallAdded(mCall);
+        when(mCall.isActiveFocus()).thenReturn(true);
+        when(mCall.getVideoState()).thenReturn(VideoProfile.STATE_BIDIRECTIONAL);
+
+        // First active focus switch - should route to speaker
+        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, ACTIVE_FOCUS, 0);
+        mController.sendMessageWithSessionInfo(SPEAKER_ON);
+        waitForHandlerAction(mController.getAdapterHandler(), TEST_TIMEOUT);
+        assertEquals(AudioRoute.TYPE_SPEAKER, mController.getCurrentOrPendingRoute().getType());
+
+        // Switch back to earpiece manually
+        mController.sendMessageWithSessionInfo(SWITCH_EARPIECE);
+        mController.sendMessageWithSessionInfo(SPEAKER_OFF);
+        waitForHandlerAction(mController.getAdapterHandler(), TEST_TIMEOUT);
+        assertEquals(AudioRoute.TYPE_EARPIECE, mController.getCurrentOrPendingRoute().getType());
+
+        // Second active focus switch - should NOT route to speaker
+        mController.sendMessageWithSessionInfo(SWITCH_FOCUS, ACTIVE_FOCUS, 0);
+        mController.sendMessageWithSessionInfo(SPEAKER_ON);
+        waitForHandlerAction(mController.getAdapterHandler(), TEST_TIMEOUT);
+        assertEquals(AudioRoute.TYPE_SPEAKER, mController.getCurrentOrPendingRoute().getType());
     }
 
     @SmallTest

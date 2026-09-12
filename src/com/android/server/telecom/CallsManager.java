@@ -5417,6 +5417,10 @@ public class CallsManager extends Call.ListenerBase
         return getFirstCallWithState(exceptCall, false /* skipSelfManaged */, LIVE_CALL_STATES);
     }
 
+    public Call getFirstCallWithStateExcept(Call excludeCall, int... states) {
+        return getFirstCallWithState(excludeCall, false /* skipSelfManaged */, states);
+    }
+
     @VisibleForTesting
     public PhoneNumberUtilsAdapter getPhoneNumberUtilsAdapter() {
         return mPhoneNumberUtilsAdapter;

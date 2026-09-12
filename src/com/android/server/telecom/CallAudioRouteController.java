@@ -853,7 +853,11 @@ public class CallAudioRouteController extends CallsManagerListenerBase
         Log.i(this, "shouldHandleRouteForVideoCall: fgCall=%s, isVideo=%b, "
                 + "isActiveFocusAlreadySet=%b, " + "mIsLastRequestedRouteUserSwitch=%b",
                 foregroundCall, isVideo, isActiveFocusAlreadySet, mIsLastRequestedRouteUserSwitch);
-        return isVideo && !isActiveFocusAlreadySet && !mIsLastRequestedRouteUserSwitch;
+        // Allow route recalculation on all active focus switches given that the current
+        // route was not requested by the user.
+        return isVideo && (!isActiveFocusAlreadySet
+                || com.android.internal.telecom.flags.Flags.vtActiveFocusAudioRoute())
+                && !mIsLastRequestedRouteUserSwitch;
     }
 
     private void preHandleMessage(Message msg) {

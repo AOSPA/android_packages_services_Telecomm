@@ -405,8 +405,8 @@ public class LocalVoicemailControllerTest extends TelecomTestCase {
                 mockBinder);
 
         connection.onServiceDisconnected(new ComponentName(PACKAGE_NAME, "LocalVoicemailService"));
-        // stopLocalVoicemail is NOT called because mCall is cleared in disconnectLocalVmCall
-        verify(mockService, never()).stopLocalVoicemail(any());
+        // Verify stopLocalVoicemail is called on the disconnected call.
+        verify(mockService).stopLocalVoicemail(any());
         verify(mMockCallsManagerAdapter).disconnectCall(mockCall);
     }
 
@@ -423,9 +423,8 @@ public class LocalVoicemailControllerTest extends TelecomTestCase {
                 mockBinder);
 
         connection.onBindingDied(new ComponentName(PACKAGE_NAME, "LocalVoicemailService"));
-        // stopLocalVoicemail is NOT called because mCall is cleared in stopLocalVoicemail ->
-        // disconnectLocalVmCall
-        verify(mockService, never()).stopLocalVoicemail(any());
+        // Verify that stopLocalVoicemail called on the disconnected call.
+        verify(mockService).stopLocalVoicemail(any());
         verify(mMockCallsManagerAdapter).disconnectCall(mockCall);
     }
 
@@ -442,9 +441,8 @@ public class LocalVoicemailControllerTest extends TelecomTestCase {
                 mockBinder);
 
         connection.onNullBinding(new ComponentName(PACKAGE_NAME, "LocalVoicemailService"));
-        // stopLocalVoicemail is NOT called because mCall is cleared in stopLocalVoicemail ->
-        // disconnectLocalVmCall
-        verify(mockService, never()).stopLocalVoicemail(any());
+        // Verify stopLocalVoicemail is called on the disconnected call.
+        verify(mockService).stopLocalVoicemail(any());
         verify(mMockCallsManagerAdapter).disconnectCall(mockCall);
     }
 

@@ -101,6 +101,7 @@ public class CallSequencingController {
             "Cannot hold active call";
     private static final String KEY_SHOW_VOWIFI_DROP_DIALOG_ON_DSDS_BOOL =
             "show_vowifi_drop_dialog_on_dsds_bool";
+    private static final long ERROR_DIALOG_DELAY_MS = 200L;
 
     public CallSequencingController(CallsManager callsManager, Context context,
             ClockProxy clockProxy, AnomalyReporterAdapter anomalyReporter,
@@ -893,8 +894,9 @@ public class CallSequencingController {
         }
 
         if (mCallsManager.hasMaximumOutgoingCalls(call)) {
-            Call outgoingCall = mCallsManager.getFirstCallWithState(OUTGOING_CALL_STATES);
-            if (outgoingCall.getState() == CallState.SELECT_PHONE_ACCOUNT) {
+            Call outgoingCall = mCallsManager.getFirstCallWithStateExcept(call,
+                    OUTGOING_CALL_STATES);
+            if (outgoingCall != null && outgoingCall.getState() == CallState.SELECT_PHONE_ACCOUNT) {
                 // Users may accidentally repeat a click on the call button quickly after attempting
                 // a call. This casuses Telecom to end the previous SELECT_PHONE_ACCOUNT call to
                 // make room for 2nd call. But InCallUI will be handling the phone account selection
@@ -1365,8 +1367,9 @@ public class CallSequencingController {
             call.setStartFailCause(cause);
         }
         CharSequence message = TelecomResourceId.getResources(mContext).getText(resourceId);
-        UserUtil.showErrorDialogForRestrictedOutgoingCall(mContext, mTelecomPackageName, message,
-                TAG, reason);
+        mHandler.postDelayed(() ->
+                UserUtil.showErrorDialogForRestrictedOutgoingCall(mContext,
+                        mTelecomPackageName, message, TAG, reason), ERROR_DIALOG_DELAY_MS);
     }
 
     public Handler getHandler() {

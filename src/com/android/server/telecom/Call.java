@@ -3749,7 +3749,8 @@ public class Call implements CreateConnectionResponse, EventManager.Loggable,
     }
 
     public boolean isActiveFocus() {
-        return isActive() || mState == CallState.DIALING || mState == CallState.PULLING;
+        return isActive() || mState == CallState.DIALING || mState == CallState.PULLING
+                || mState == CallState.CONNECTING;
     }
 
     @VisibleForTesting

@@ -3108,11 +3108,6 @@ public class InCallController extends CallsManagerListenerBase implements
             List<ComponentName> componentsUpdated = new ArrayList<>();
             for (Map.Entry<InCallServiceInfo, IInCallService> entry : userServices.entrySet()) {
                 InCallServiceInfo info = entry.getKey();
-// QTI_BEGIN: 2022-11-22: Telephony: Add null check for InCallServiceInfo when updateCall
-                if (info == null) {
-                    continue;
-                }
-// QTI_END: 2022-11-22: Telephony: Add null check for InCallServiceInfo when updateCall
                 ComponentName componentName = info.getComponentName();
 
                 // If specified, skip ICS if it matches the package name.  Used for cases where on

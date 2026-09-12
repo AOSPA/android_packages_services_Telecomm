@@ -107,8 +107,9 @@ public class LocalVoicemailController extends CallsManagerListenerBase implement
                     // The local voicemail service should have disconnected the call using
                     // LocalVoicemailService#disconnectCall, but in case it just unbound, we'll
                     // disconnect and cleanup here.
+                    Call callToNotify = mCall;
                     disconnectLocalVmCall();
-                    maybeUnbindLocalVoicemailService();
+                    maybeUnbindLocalVoicemailService(callToNotify);
                     mILocalVoicemailService = null;
                     mConnection = null;
                 }
@@ -275,10 +276,10 @@ public class LocalVoicemailController extends CallsManagerListenerBase implement
 
     @Override
     public void onCallRemoved(Call call){
+        mCalls.remove(call);
         if (getActiveLocalVoicemailService() == null) {
             return;
         }
-        mCalls.remove(call);
         maybeCleanupCall(call);
     }
 
@@ -579,8 +580,7 @@ public class LocalVoicemailController extends CallsManagerListenerBase implement
      * Notifies the local voicemail service that local voicemail has stopped, either due to a call
      * disconnection or due to the call becoming active again.
      */
-    private void notifyLocalVoicemailStopped() {
-        Call theCall = mCall;
+    private void notifyLocalVoicemailStopped(Call theCall) {
         if (mILocalVoicemailService == null || theCall == null) {
             return;
         }
@@ -600,8 +600,12 @@ public class LocalVoicemailController extends CallsManagerListenerBase implement
      * Handles unbinding from the {@link LocalVoicemailService} if bound; if not bound does nothing.
      */
     private void maybeUnbindLocalVoicemailService() {
+        maybeUnbindLocalVoicemailService(mCall);
+    }
+
+    private void maybeUnbindLocalVoicemailService(Call call) {
         if (mConnection != null) {
-            notifyLocalVoicemailStopped();
+            notifyLocalVoicemailStopped(call);
 
             Log.i(this, "maybeUnbindLocalVoicemailService - unbinding from %s",
                     getActiveLocalVoicemailService());
@@ -640,13 +644,14 @@ public class LocalVoicemailController extends CallsManagerListenerBase implement
             // Not in local voicemail.
             return;
         }
+        Call callToNotify = mCall;
         // If there was a local pickup request (ie the user wants to talk to the other party), then
         // we can skip disconnecting the call.
         if (!mIsLocalPickupPending) {
             disconnectLocalVmCall();
             mIsLocalPickupPending = false;
         }
-        maybeUnbindLocalVoicemailService();
+        maybeUnbindLocalVoicemailService(callToNotify);
     }
 
     /**
